@@ -1,6 +1,10 @@
+import datetime
+
 import discord
-from discord import slash_command, option
+from discord import slash_command, option, Option
 from discord.ext import commands
+
+from main import client
 
 
 class Moderation(commands.Cog):
@@ -91,18 +95,56 @@ class Moderation(commands.Cog):
 
         await ctx.respond(embed=embed, delete_after=10)
 
-    @slash_command(description="Setze den Slowchat")
-    @option(name="seconds", description="Sekunden", required=True)
-    @discord.default_permissions(manage_channels=True)
-    async def slowchat(self, ctx, seconds: int):
-        if seconds is None:
-            await ctx.respond("``Es fehlen die angeforderten Sekunden für den Slowchat``")
+    @slash_command(name="mute", description="Schaltet einen User stumm")
+    @commands.has_permissions(moderate_members=True)
+    async def mute(
+            self, ctx,
+            member: Option(discord.Member, "Wähle einen User zum stummschalten"),
+            reason: Option(str, "Grund für den Mute", required=False, default="Kein Grund angegeben")
+    ):
+        if ctx.author.top_role <= member.top_role:  # Hier war self.ctx falsch
+            await ctx.respond("Du kannst keine Mitglieder muten, die eine höhere oder gleiche Rolle wie du haben!")
             return
 
-        await ctx.channel.edit(slowmode_delay=seconds)
-        embed = discord.Embed(title="Slowchat", description=f"Slowchat wurde auf {seconds} Sekunden gesetzt.")
 
-        await ctx.respond(embed=embed, delete_after=10)
+        try:
+            # Hier fügen wir eine tatsächliche Timeout-Dauer hinzu (z.B. 1 Woche)
+            await member.timeout(duration=discord.utils.utcnow() + datetime.timedelta(days=7), reason=reason)
+            embed = discord.Embed(
+                title="User gemuted",
+                description=f"{member.mention} wurde von {ctx.author.mention} gemuted.\nGrund: {reason}",
+                color=discord.Color.red()
+            )
+            await ctx.respond(embed=embed)
+        except discord.Forbidden:
+            await ctx.respond("Ich habe nicht die nötigen Rechte, um diesen User zu muten!")
+        except Exception as e:
+            await ctx.respond(f"Ein Fehler ist aufgetreten: {str(e)}")
+
+    @slash_command(name="unmute", description="Hebt den Mute eines Users auf")
+    @commands.has_permissions(moderate_members=True)
+    async def unmute(
+            self, ctx,
+            member: Option(discord.Member, "Wähle einen User zum entstummen"),
+            reason: Option(str, "Grund für den Unmute", required=False, default="Kein Grund angegeben")
+    ):
+        if ctx.author.top_role <= member.top_role:  # Hier war self.ctx falsch
+            await ctx.respond("Du kannst keine Mitglieder unmuten, die eine höhere oder gleiche Rolle wie du haben!")
+            return
+
+        try:
+            await member.timeout(duration=None, reason=reason)
+            embed = discord.Embed(
+                title="User unmuted",
+                description=f"{member.mention} wurde von {ctx.author.mention} entmuted.\nGrund: {reason}",
+                color=discord.Color.green()
+            )
+            await ctx.respond(embed=embed)
+        except discord.Forbidden:
+            await ctx.respond("Ich habe nicht die nötigen Rechte, um diesen User zu unmuten!")
+        except Exception as e:
+            await ctx.respond(f"Ein Fehler ist aufgetreten: {str(e)}")
+
 
 
 def setup(client):

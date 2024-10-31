@@ -17,7 +17,7 @@ client = commands.Bot(
     status=discord.Status.online,
     activity=discord.Activity(type=discord.ActivityType.watching, name="mit /help alle Commands")
 )
-client.remove_command("help") 
+client.remove_command("help")
 
 
 # Setup on_ready method
