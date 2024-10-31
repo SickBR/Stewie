@@ -3,3 +3,5 @@ venv
 users.db
 pics
 cogs
+main.py
+economy
